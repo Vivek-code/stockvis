@@ -3,22 +3,18 @@ import json
 import joblib
 from tensorflow.keras.models import load_model
 
-def load_model_package(model_name, base_dir="models"):
+def load_model_package(model_name, ticker="RELIANCE.NS"):
     """
-    Loads a model package (model, scaler, config) by name.
+    Loads a model package (model, scaler, config) by name and ticker.
+    Structure: models/<TICKER>/<MODEL_NAME>/
+    """
+    base_dir = "models"
+    model_dir = os.path.join(base_dir, ticker, model_name)
     
-    Args:
-        model_name (str): Name of the model directory (e.g., 'lstm', 'gru').
-        base_dir (str): output directory of models.
-        
-    Returns:
-        dict: {
-            'model': keras_model,
-            'scaler': scaler_obj,
-            'config': dict
-        }
-    """
-    model_dir = os.path.join(base_dir, model_name)
+    # Absolute path check
+    if not os.path.isabs(model_dir):
+        # Assuming script is run from project root
+        model_dir = os.path.abspath(model_dir)
     
     # 1. Load Config
     config_path = os.path.join(model_dir, "config.json")
@@ -36,7 +32,6 @@ def load_model_package(model_name, base_dir="models"):
     scaler = joblib.load(scaler_path)
     
     # 3. Load Model
-    # Try different extensions if needed, but we saved as .keras
     model_path = os.path.join(model_dir, f"{model_name}_model.keras")
     if not os.path.exists(model_path):
         # Fallback to .h5 if .keras doesn't exist

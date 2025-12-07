@@ -15,23 +15,29 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev_key_for_project_123'
 
 # --- 1. Global State for Models ---
-# Ideally, we load these once at startup
+# Lazy Loading Cache
+# Key: (ticker, model_name), Value: package
 MODELS = {}
 AVAILABLE_MODELS = ['lstm', 'gru', 'cnn']
 
-def load_all_models():
-    """Lengths all available models into memory."""
-    print("Loading models...")
-    for m_name in AVAILABLE_MODELS:
-        try:
-            MODELS[m_name] = load_model_package(m_name)
-            print(f"Loaded {m_name}")
-        except Exception as e:
-            print(f"Failed to load {m_name}: {e}")
+def get_model(ticker, model_name):
+    """
+    Retrieves a model from cache or loads it from disk.
+    """
+    key = (ticker, model_name)
+    if key in MODELS:
+        return MODELS[key]
+    
+    print(f"Lazy loading model for {ticker} ({model_name})...")
+    try:
+        pkg = load_model_package(model_name, ticker)
+        MODELS[key] = pkg
+        return pkg
+    except Exception as e:
+        print(f"Failed to load {model_name} for {ticker}: {e}")
+        return None
 
-# Load models in a separate thread to not block startup if it takes long, 
-# though for simple apps blocking is safer to ensure readiness.
-load_all_models()
+# No load_all_models() call at startup anymore for speed and memory efficiency.
 
 # --- 2. Routes ---
 
@@ -77,10 +83,13 @@ def predict():
     model_name = data.get('model', 'lstm').lower()
     days_to_predict = int(data.get('days', 1))
 
-    if model_name not in MODELS:
-        return jsonify({"error": f"Model {model_name} not available"}), 400
+    if model_name not in AVAILABLE_MODELS:
+        return jsonify({"error": f"Model type {model_name} not supported"}), 400
 
-    pkg = MODELS[model_name]
+    pkg = get_model(ticker, model_name)
+    if pkg is None:
+        return jsonify({"error": f"Model {model_name} for {ticker} not found (maybe not trained yet?)"}), 404
+
     model = pkg['model']
     scaler = pkg['scaler']
     config = pkg['config']

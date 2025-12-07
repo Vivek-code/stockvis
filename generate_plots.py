@@ -22,11 +22,11 @@ def generate_comparison_plots(ticker="RELIANCE.NS"):
     # 2. Load Models
     models = {}
     try:
-        models['LSTM'] = load_model_package("lstm")
-        models['GRU'] = load_model_package("gru")
-        models['CNN'] = load_model_package("cnn")
+        models['LSTM'] = load_model_package("lstm", ticker)
+        models['GRU'] = load_model_package("gru", ticker)
+        models['CNN'] = load_model_package("cnn", ticker)
     except Exception as e:
-        print(f"Error loading models: {e}")
+        print(f"Error loading models for {ticker}: {e}")
         return
 
     # Use parameters from one config (assuming consistent)
