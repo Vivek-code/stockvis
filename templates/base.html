@@ -21,7 +21,7 @@
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
-                <i class="fas fa-chart-line me-2"></i>NiftyPredict
+                <i class="fas fa-chart-line me-2"></i>StockVision
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -30,6 +30,9 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('comparison') }}">Comparison</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#features">Solution</a>

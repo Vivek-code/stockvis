@@ -17,10 +17,18 @@ def download_data(ticker, start_date, end_date):
         # but for single ticker it might be simpler.
         # Let's ensure we have a clean DataFrame.
         if isinstance(df.columns, pd.MultiIndex):
-             # If columns are (Price, Ticker), we might drop the ticker level if it's there
-             # Or sometimes it's (Ticker, Price).
-             # yfinance update: .download() often returns MultiIndex columns even for single ticker now.
-             pass 
+            # Flatten columns: if we have (Price, Ticker), we just want Price.
+            # Usually level 0 is Price (Close, Open, etc) and level 1 is Ticker.
+            # If we only have 1 ticker, we can drop the ticker level.
+            try:
+                # Assuming level 1 is the ticker, we drop it.
+                if df.columns.nlevels > 1:
+                    df.columns = df.columns.droplevel(1)
+            except Exception as e:
+                print(f"Error flattening columns: {e}")
+        
+        # Verify columns are flat now
+        print(f"Columns after download: {df.columns}")
 
         # Forward fill generic missing values just in case
         df.ffill(inplace=True)

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+    <h2 class="fw-bold text-primary mb-4">Model & Stock Comparison</h2>
+    <p class="text-muted mb-5">Visualizing performance differences between LSTM, GRU, and CNN models on test data
+        (2023-2024).</p>
+
+    {% for img in images %}
+    <div class="card border-0 shadow-sm p-4 mb-5">
+        <h4 class="fw-bold mb-3">{{ img.title }} ({{ img.ticker }})</h4>
+        <div class="row">
+            <div class="col-lg-8">
+                <img src="{{ url_for('static', filename='images/' + img.file ) }}" class="img-fluid rounded border"
+                    alt="{{ img.title }} Comparison">
+            </div>
+            <div class="col-lg-4">
+                <h5 class="fw-bold mt-3 mt-lg-0">Performance Insights</h5>
+                <p class="text-muted">
+                    The plot shows the Actual closing price (Black) vs the Predicted prices from our three models.
+                </p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="fas fa-circle text-primary me-2"></i> LSTM is generally smoother but may lag.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-circle text-success me-2"></i> GRU reacts faster to trends.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-circle text-warning me-2"></i> CNN captures short-term volatility.
+                    </li>
+                </ul>
+                <!-- Placeholder for dynamic metrics if we passed them -->
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="alert alert-secondary mt-5">
+        <i class="fas fa-flask me-2"></i> Only selected stocks are shown for this demo. To generate more, run the
+        <code>generate_plots.py</code> script.
+    </div>
+</div>
+{% endblock %}

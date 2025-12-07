@@ -45,7 +45,25 @@ def dashboard():
 
 @app.route('/models')
 def models():
-    return render_template('models.html') # Placeholder
+    return render_template('models.html')
+
+@app.route('/comparison')
+def comparison():
+    # Dynamically load all generated comparison images
+    img_dir = os.path.join(app.root_path, 'static', 'images')
+    images = []
+    if os.path.exists(img_dir):
+        for f in os.listdir(img_dir):
+            if f.startswith('comparison_') and f.endswith('.png'):
+                # Extract ticker logic if needed, or just use filename
+                # format: comparison_TICKER.png
+                ticker = f.replace('comparison_', '').replace('.png', '')
+                images.append({
+                    'ticker': ticker,
+                    'title': ticker, # simplified
+                    'file': f
+                })
+    return render_template('comparison.html', images=images)
 
 # --- 3. API Endpoints ---
 
@@ -141,20 +159,50 @@ def history():
     end_date = datetime.now()
     start_date = end_date - timedelta(days=limit*2) # Buffer for weekends
     
-    df = download_data(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-    if df is None:
-        return jsonify({"error": "Failed to fetch data"}), 500
+    print(f"DEBUG: Fetching history for {ticker}, limit={limit}")
+    try:
+        df = download_data(ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         
-    # Return Close prices and Dates
-    # Tail limit
-    df = df.tail(limit)
-    
-    result = {
-        "dates": df.index.strftime('%Y-%m-%d').tolist(),
-        "prices": df['Close'].tolist(),
-        "volumes": df['Volume'].tolist() if 'Volume' in df.columns else []
-    }
-    return jsonify(result)
+        if df is None:
+            print("DEBUG: download_data returned None")
+            return jsonify({"error": "Failed to fetch data (None returned)"}), 500
+            
+        if df.empty:
+            print("DEBUG: DataFrame is empty")
+            return jsonify({"error": "No data found for ticker"}), 500
+
+        print(f"DEBUG: Data fetched. Shape: {df.shape}. Columns: {df.columns}")
+        
+        # Ensure 'Close' exists
+        if 'Close' not in df.columns:
+            print(f"DEBUG: 'Close' column missing. Available: {df.columns}")
+            return jsonify({"error": f"'Close' price not found in data. columns: {df.columns}"}), 500
+
+        # Tail limit
+        df = df.tail(limit)
+        
+        # Handle datetime index formatting
+        dates = df.index.strftime('%Y-%m-%d').tolist()
+        prices = df['Close'].tolist()
+        
+        # Check for NaNs
+        if pd.Series(prices).isna().any():
+            print("DEBUG: Found NaNs in prices, filling...")
+            prices = pd.Series(prices).fillna(method='ffill').tolist()
+
+        result = {
+            "dates": dates,
+            "prices": prices,
+            "volumes": df['Volume'].tolist() if 'Volume' in df.columns else []
+        }
+        print("DEBUG: Sending successful response.")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"DEBUG: Exception in history endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False) # use_reloader=False to avoid loading models twice

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('tickerSelect').addEventListener('change', loadHistory);
 });
 
-async def loadHistory() {
+async function loadHistory() {
     const ticker = document.getElementById('tickerSelect').value;
     const predictBtn = document.getElementById('predictBtn');
 
@@ -32,6 +32,7 @@ async def loadHistory() {
 
     } catch (error) {
         console.error("Failed to load history:", error);
+        alert("Failed to load historical data. Please check connection or ticker.");
     } finally {
         predictBtn.disabled = false;
     }
