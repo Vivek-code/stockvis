@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2 class="fw-bold text-primary">Market Dashboard</h2>
+            <p class="text-muted">Analyze trends and forecast prices using AI models.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Controls Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm p-3 sticky-top" style="top: 100px;">
+                <h5 class="fw-bold mb-3">Configuration</h5>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Select Asset</label>
+                    <select class="form-select" id="tickerSelect">
+                        <option value="RELIANCE.NS" selected>Reliance Ind.</option>
+                        <option value="TCS.NS">TCS</option>
+                        <option value="HDFCBANK.NS">HDFC Bank</option>
+                        <option value="INFY.NS">Infosys</option>
+                        <option value="ICICIBANK.NS">ICICI Bank</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">AI Model</label>
+                    <select class="form-select" id="modelSelect">
+                        <option value="lstm" selected>LSTM (Long Short-Term Memory)</option>
+                        <option value="gru">GRU (Gated Recurrent Unit)</option>
+                        <option value="cnn">1D-CNN (Convolutional)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold">Forecast Horizon (Days)</label>
+                    <input type="number" class="form-control" id="horizonInput" value="1" min="1" max="7">
+                </div>
+
+                <button class="btn btn-primary w-100 mb-2" id="predictBtn" onclick="runPrediction()">
+                    <i class="fas fa-bolt me-2"></i>Generate Forecast
+                </button>
+                <div id="loadingSpinner" class="text-center d-none mt-2">
+                    <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                    <small class="text-muted ms-2">Processing...</small>
+                </div>
+            </div>
+
+            <!-- Result Card (Hidden initially) -->
+            <div class="card border-0 shadow-sm p-3 mt-3 bg-primary text-white d-none" id="predictionResultCard">
+                <h6 class="mb-1 opacity-75">Predicted Close</h6>
+                <h2 class="fw-bold mb-0" id="predictionValue">...</h2>
+                <small id="predictionDate" class="opacity-75">...</small>
+            </div>
+        </div>
+
+        <!-- Main Chart Area -->
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Price History & Forecast</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active">3M</button>
+                        <button class="btn btn-outline-secondary">6M</button>
+                        <button class="btn btn-outline-secondary">1Y</button>
+                    </div>
+                </div>
+                <div style="position: relative; height: 500px; width: 100%;">
+                    <canvas id="mainChart"></canvas>
+                </div>
+                <div id="chartError" class="alert alert-danger d-none mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom JS for Dashboard -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

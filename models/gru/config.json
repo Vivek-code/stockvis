@@ -1,0 +1,33 @@
+{
+    "name": "GRU_v1",
+    "model_type": "GRU",
+    "lookback": 30,
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "train_start": "2015-01-01",
+    "train_end": "2024-01-01",
+    "metrics": {
+        "mae": 0.03476610407233238,
+        "rmse": 0.03985615356306477,
+        "val_loss": 0.0015885131433606148
+    }
+}

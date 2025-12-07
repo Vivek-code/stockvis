@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+    <h2 class="fw-bold text-primary mb-4">Model Performance</h2>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 mb-4">
+                <h5 class="fw-bold">LSTM (Long Short-Term Memory)</h5>
+                <p class="text-muted">Best for capturing long-term dependencies in time series data.</p>
+                <div class="d-flex justify-content-between">
+                    <span>MAE: <strong class="text-success">0.0687</strong></span>
+                    <span>RMSE: <strong class="text-primary">0.0744</strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 mb-4">
+                <h5 class="fw-bold">GRU (Gated Recurrent Unit)</h5>
+                <p class="text-muted">Efficient and often faster training than LSTM with similar performance.</p>
+                <div class="d-flex justify-content-between">
+                    <span>MAE: <strong class="text-success">0.0650</strong></span>
+                    <span>RMSE: <strong class="text-primary">0.0701</strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 mb-4">
+                <h5 class="fw-bold">1D-CNN</h5>
+                <p class="text-muted">Captures local patterns effectively; surprisingly effective for financial data.
+                </p>
+                <div class="d-flex justify-content-between">
+                    <span>MAE: <strong class="text-success">0.0283</strong></span>
+                    <span>RMSE: <strong class="text-primary">0.0355</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Note:</strong> Metrics are based on the test set (2023-2024). Lower is better.
+    </div>
+</div>
+{% endblock %}
