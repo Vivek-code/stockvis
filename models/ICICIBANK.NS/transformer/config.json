@@ -1,0 +1,31 @@
+{
+    "ticker": "ICICIBANK.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 55.07129399709874,
+    "rmse": 77.74233051873921,
+    "r2": -0.6359226371051898,
+    "mape": 4.093582001199815,
+    "date_trained": "2026-04-16 03:43:00"
+}

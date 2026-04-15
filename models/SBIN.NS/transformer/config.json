@@ -1,0 +1,31 @@
+{
+    "ticker": "SBIN.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 69.67926886286295,
+    "rmse": 85.922467766485,
+    "r2": 0.5718517637223293,
+    "mape": 7.847655464588639,
+    "date_trained": "2026-04-16 03:43:36"
+}

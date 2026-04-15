@@ -21,7 +21,7 @@ app.config['SECRET_KEY'] = 'dev_key_for_project_123'
 # Lazy Loading Cache
 # Key: (ticker, model_name), Value: package
 MODELS = {}
-AVAILABLE_MODELS = ['lstm', 'gru', 'cnn']
+AVAILABLE_MODELS = ['lstm', 'gru', 'cnn', 'transformer']
 
 def get_model(ticker, model_name):
     """

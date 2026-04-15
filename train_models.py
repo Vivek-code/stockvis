@@ -7,12 +7,12 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from data_loader import download_data
 from features import add_technical_indicators
 from model_utils import prepare_data_for_training, save_scaler
-from model_definitions import create_lstm_model, create_gru_model, create_cnn_model
+from model_definitions import create_lstm_model, create_gru_model, create_cnn_model, create_transformer_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 # Configuration
-START_DATE = "2015-01-01"
-END_DATE = "2024-01-01"
+START_DATE = "2020-01-01"
+END_DATE = "2026-04-16"
 LOOKBACK = 30
 EPOCHS = 20 # Efficient training for 10 tickers
 BATCH_SIZE = 32
@@ -39,7 +39,8 @@ def train_and_save_models():
     models_to_train = {
         'lstm': create_lstm_model,
         'gru': create_gru_model,
-        'cnn': create_cnn_model
+        'cnn': create_cnn_model,
+        'transformer': create_transformer_model
     }
     
     base_model_dir = "models"

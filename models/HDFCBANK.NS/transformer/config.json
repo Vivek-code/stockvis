@@ -1,0 +1,31 @@
+{
+    "ticker": "HDFCBANK.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 91.78140980295348,
+    "rmse": 100.38668328829996,
+    "r2": -1.5775385309861938,
+    "mape": 9.529523447903685,
+    "date_trained": "2026-04-16 03:42:10"
+}

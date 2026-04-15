@@ -1,0 +1,31 @@
+{
+    "ticker": "LT.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 200.9787015168627,
+    "rmse": 245.4259776888113,
+    "r2": 0.2938919299323812,
+    "mape": 5.460891910009615,
+    "date_trained": "2026-04-16 03:44:35"
+}

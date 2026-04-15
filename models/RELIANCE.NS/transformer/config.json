@@ -1,0 +1,31 @@
+{
+    "ticker": "RELIANCE.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 57.45631823488482,
+    "rmse": 67.93304709962956,
+    "r2": 0.43350147863632627,
+    "mape": 4.096255044314472,
+    "date_trained": "2026-04-16 03:41:43"
+}

@@ -1,5 +1,8 @@
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, GRU, Conv1D, MaxPooling1D, Flatten, Dropout, Input
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import (
+    Dense, LSTM, GRU, Conv1D, MaxPooling1D, Flatten, Dropout, Input,
+    MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
+)
 
 def create_lstm_model(input_shape):
     """
@@ -48,5 +51,47 @@ def create_cnn_model(input_shape):
         Dropout(0.2),
         Dense(1)
     ])
+    model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    return model
+
+def create_transformer_model(input_shape):
+    """
+    Creates a Transformer Encoder model for time-series regression.
+    Uses MultiHeadAttention with residual connections and LayerNormalization.
+    """
+    inputs = Input(shape=input_shape)
+
+    # Project input features to d_model dimensions
+    x = Dense(64)(inputs)
+
+    # Transformer Encoder Block 1
+    attn_output = MultiHeadAttention(num_heads=4, key_dim=64)(x, x)
+    attn_output = Dropout(0.2)(attn_output)
+    x = LayerNormalization()(x + attn_output)  # Residual connection
+
+    ff_output = Dense(128, activation='relu')(x)
+    ff_output = Dropout(0.2)(ff_output)
+    ff_output = Dense(64)(ff_output)
+    x = LayerNormalization()(x + ff_output)  # Residual connection
+
+    # Transformer Encoder Block 2
+    attn_output = MultiHeadAttention(num_heads=4, key_dim=64)(x, x)
+    attn_output = Dropout(0.2)(attn_output)
+    x = LayerNormalization()(x + attn_output)
+
+    ff_output = Dense(128, activation='relu')(x)
+    ff_output = Dropout(0.2)(ff_output)
+    ff_output = Dense(64)(ff_output)
+    x = LayerNormalization()(x + ff_output)
+
+    # Collapse the time dimension
+    x = GlobalAveragePooling1D()(x)
+
+    # Classification / Regression head
+    x = Dense(32, activation='relu')(x)
+    x = Dropout(0.2)(x)
+    outputs = Dense(1)(x)
+
+    model = Model(inputs=inputs, outputs=outputs)
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
     return model

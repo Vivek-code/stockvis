@@ -1,0 +1,31 @@
+{
+    "ticker": "INFY.NS",
+    "model_type": "transformer",
+    "features": [
+        "Close",
+        "High",
+        "Low",
+        "Open",
+        "Volume",
+        "RSI",
+        "MACD",
+        "MACD_hist",
+        "MACD_signal",
+        "BBL_20_2.0_2.0",
+        "BBM_20_2.0_2.0",
+        "BBU_20_2.0_2.0",
+        "BBB_20_2.0_2.0",
+        "BBP_20_2.0_2.0",
+        "ATR",
+        "ROC",
+        "SMA_10",
+        "SMA_20"
+    ],
+    "target": "Close",
+    "lookback": 30,
+    "mae": 86.27394861428633,
+    "rmse": 103.66039056352945,
+    "r2": 0.09615694123002427,
+    "mape": 5.812641149698166,
+    "date_trained": "2026-04-16 03:44:06"
+}
