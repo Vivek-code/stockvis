@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from data_loader import download_data
 from features import add_technical_indicators
 from model_utils import prepare_data_for_training, save_scaler
@@ -118,10 +118,16 @@ def train_and_save_models():
                 y_true_rescaled = scaler.inverse_transform(dummy_true)[:, target_idx]
                 y_pred_rescaled = scaler.inverse_transform(dummy_pred)[:, target_idx]
                 
+                
                 mae = mean_absolute_error(y_true_rescaled, y_pred_rescaled)
                 rmse = np.sqrt(mean_squared_error(y_true_rescaled, y_pred_rescaled))
+                r2 = r2_score(y_true_rescaled, y_pred_rescaled)
+
+                # MAPE
+                mask = y_true_rescaled != 0
+                mape = np.mean(np.abs((y_true_rescaled[mask] - y_pred_rescaled[mask]) / y_true_rescaled[mask])) * 100
                 
-                print(f"{name.upper()} - MAE: {mae:.4f}, RMSE: {rmse:.4f}")
+                print(f"{name.upper()} - MAE: {mae:.4f}, RMSE: {rmse:.4f}, R2: {r2:.4f}, MAPE: {mape:.2f}%")
                 
                 # 6. Save Model Package
                 # Structure: models/TICKER/MODEL_NAME
@@ -133,6 +139,8 @@ def train_and_save_models():
                     'lookback': LOOKBACK,
                     'mae': mae,
                     'rmse': rmse,
+                    'r2': r2,
+                    'mape': mape,
                     'date_trained': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
                 

@@ -36,9 +36,127 @@
     </div>
     {% endfor %}
 
+    <!-- Metrics Leaderboard -->
+    <div class="card border-0 shadow-sm p-4 mb-5">
+        <h4 class="fw-bold mb-3">Model Leaderboard</h4>
+        <p class="text-muted">Compare model accuracy metrics. Sort to find the best performer.</p>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="leaderboardTable">
+                <thead class="table-light">
+                    <tr>
+                        <th onclick="sortTable(0)" style="cursor:pointer">Ticker <i class="fas fa-sort small ms-1"></i>
+                        </th>
+                        <th onclick="sortTable(1)" style="cursor:pointer">Model <i class="fas fa-sort small ms-1"></i>
+                        </th>
+                        <th onclick="sortTable(2)" style="cursor:pointer" class="text-end">R2 Score <i
+                                class="fas fa-sort small ms-1"></i></th>
+                        <th onclick="sortTable(3)" style="cursor:pointer" class="text-end">MAPE <i
+                                class="fas fa-sort small ms-1"></i></th>
+                        <th onclick="sortTable(4)" style="cursor:pointer" class="text-end">RMSE <i
+                                class="fas fa-sort small ms-1"></i></th>
+                        <th onclick="sortTable(5)" style="cursor:pointer" class="text-end">MAE <i
+                                class="fas fa-sort small ms-1"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <!-- Populated by JS -->
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary spinner-border-sm"></div> Loading metrics...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div class="alert alert-secondary mt-5">
         <i class="fas fa-flask me-2"></i> Only selected stocks are shown for this demo. To generate more, run the
         <code>generate_plots.py</code> script.
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadMetrics);
+
+    async function loadMetrics() {
+        try {
+            const response = await fetch('/api/metrics');
+            const data = await response.json();
+
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No metrics available. Train models first.</td></tr>';
+                return;
+            }
+
+            // Sort by R2 descending initially
+            data.sort((a, b) => b.r2 - a.r2);
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                // Highlight high R2
+                const r2Class = row.r2 > 0.8 ? 'text-success fw-bold' : (row.r2 < 0 ? 'text-danger' : '');
+
+                tr.innerHTML = `
+                    <td class="fw-bold text-muted">${row.ticker}</td>
+                    <td><span class="badge bg-light text-dark border">${row.model.toUpperCase()}</span></td>
+                    <td class="text-end ${r2Class}">${(row.r2 * 100).toFixed(2)}%</td>
+                    <td class="text-end">${row.mape.toFixed(2)}%</td>
+                    <td class="text-end">${row.rmse.toFixed(4)}</td>
+                    <td class="text-end">${row.mae.toFixed(4)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Error loading metrics:', error);
+            document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load metrics.</td></tr>';
+        }
+    }
+
+    // Simple Sort Function
+    function sortTable(n) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("leaderboardTable");
+        switching = true;
+        dir = "asc";
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                let valX = x.innerText;
+                let valY = y.innerText;
+
+                // Parse numbers for metric columns (2,3,4,5)
+                if (n >= 2) {
+                    valX = parseFloat(valX.replace('%', ''));
+                    valY = parseFloat(valY.replace('%', ''));
+                }
+
+                if (dir == "asc") {
+                    if (valX > valY) { shouldSwitch = true; break; }
+                } else if (dir == "desc") {
+                    if (valX < valY) { shouldSwitch = true; break; }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+</script>
 {% endblock %}

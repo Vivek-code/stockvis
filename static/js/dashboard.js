@@ -7,7 +7,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for ticker change to reload history
     document.getElementById('tickerSelect').addEventListener('change', loadHistory);
+
+    // Load prediction history table
+    loadPredictionHistory();
+
+    // Load leaderboard
+    loadMetrics();
 });
+
+async function loadPredictionHistory() {
+    const tbody = document.getElementById('historyTableBody');
+    try {
+        const response = await fetch('/api/predictions');
+        const data = await response.json();
+
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No history yet.</td></tr>';
+            return;
+        }
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            const date = new Date(row.created_at).toLocaleString();
+            tr.innerHTML = `
+                <td>${date}</td>
+                <td class="fw-bold text-primary">${row.ticker}</td>
+                <td><span class="badge bg-light text-dark border">${row.model.toUpperCase()}</span></td>
+                <td class="text-end">₹${row.price.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error("Failed to load prediction history:", error);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading history</td></tr>';
+    }
+}
 
 async function loadHistory() {
     const ticker = document.getElementById('tickerSelect').value;
@@ -80,8 +117,8 @@ async function runPrediction() {
 
         // Calculate date of prediction
         const predDate = new Date(lastDate);
-        predDate.setDate(predDate.getDate() + 1); // Next day
-        document.getElementById('predictionDate').innerText = `For ${predDate.toDateString()}`;
+        predDate.setDate(predDate.getDate() + 1); // Next day predDate
+        document.getElementById('predictionDate').innerText = `For ${new Date().toDateString()}`; // Using today as per user edit
 
         // Color coding based on movement
         if (predictedPrice > lastPrice) {
@@ -90,6 +127,9 @@ async function runPrediction() {
             resultCard.className = "card border-0 shadow-sm p-3 mt-3 bg-danger text-white";
         }
         resultCard.classList.remove('d-none');
+
+        // Refresh History Table
+        loadPredictionHistory();
 
     } catch (error) {
         console.error("Prediction failed:", error);
@@ -215,4 +255,86 @@ function updateChartForecast(predictions, lastDateObj) {
 
     marketChart.data.datasets[1].data = forecastData;
     marketChart.update();
+}
+
+
+// --- Leaderboard Logic ---
+async function loadMetrics() {
+    const tbody = document.getElementById('leaderboardBody');
+    if (!tbody) return; // Guard clause
+
+    try {
+        const response = await fetch('/api/metrics');
+        const data = await response.json();
+
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No metrics available. Train models first.</td></tr>';
+            return;
+        }
+
+        // Sort by R2 descending initially
+        data.sort((a, b) => b.r2 - a.r2);
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            // Highlight high R2
+            const r2Class = row.r2 > 0.8 ? 'text-success fw-bold' : (row.r2 < 0 ? 'text-danger' : '');
+
+            tr.innerHTML = `
+                <td class="fw-bold text-muted">${row.ticker}</td>
+                <td><span class="badge bg-light text-dark border">${row.model.toUpperCase()}</span></td>
+                <td class="text-end ${r2Class}">${(row.r2 * 100).toFixed(2)}%</td>
+                <td class="text-end">${row.mape.toFixed(2)}%</td>
+                <td class="text-end">${row.rmse.toFixed(4)}</td>
+                <td class="text-end">${row.mae.toFixed(4)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error loading metrics:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load metrics.</td></tr>';
+    }
+}
+
+function sortTable(n) {
+    var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+    table = document.getElementById("leaderboardTable");
+    switching = true;
+    dir = "asc";
+    while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n];
+            y = rows[i + 1].getElementsByTagName("TD")[n];
+
+            let valX = x.innerText;
+            let valY = y.innerText;
+
+            // Parse numbers for metric columns (2,3,4,5)
+            if (n >= 2) {
+                valX = parseFloat(valX.replace('%', ''));
+                valY = parseFloat(valY.replace('%', ''));
+            }
+
+            if (dir == "asc") {
+                if (valX > valY) { shouldSwitch = true; break; }
+            } else if (dir == "desc") {
+                if (valX < valY) { shouldSwitch = true; break; }
+            }
+        }
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount++;
+        } else {
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
+        }
+    }
 }

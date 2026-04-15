@@ -4,6 +4,9 @@ import numpy as np
 import os
 import json
 from datetime import datetime, timedelta
+import sqlite3
+import csv
+import io
 import threading
 
 # Project imports
@@ -37,7 +40,40 @@ def get_model(ticker, model_name):
         print(f"Failed to load {model_name} for {ticker}: {e}")
         return None
 
-# No load_all_models() call at startup anymore for speed and memory efficiency.
+
+# --- DB Setup ---
+DB_NAME = 'stock_app.db'
+
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            model TEXT NOT NULL,
+            predicted_price REAL NOT NULL,
+            predicted_date TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database initialized.")
+
+# Initialize DB on startup
+init_db()
+
+def save_prediction_to_db(ticker, model, price, date_str):
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute('INSERT INTO predictions (ticker, model, predicted_price, predicted_date) VALUES (?, ?, ?, ?)',
+                  (ticker, model, price, date_str))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB Error: {e}")
 
 # --- 2. Routes ---
 
@@ -72,6 +108,44 @@ def comparison():
     return render_template('comparison.html', images=images)
 
 # --- 3. API Endpoints ---
+
+@app.route('/api/metrics')
+def get_metrics():
+    """
+    Returns performance metrics for all trained models.
+    """
+    base_dir = "models"
+    metrics_data = []
+    
+    if os.path.exists(base_dir):
+        for ticker in os.listdir(base_dir):
+            ticker_path = os.path.join(base_dir, ticker)
+            if not os.path.isdir(ticker_path):
+                continue
+                
+            for model_name in os.listdir(ticker_path):
+                model_path = os.path.join(ticker_path, model_name)
+                config_path = os.path.join(model_path, 'config.json')
+                
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, 'r') as f:
+                            config = json.load(f)
+                            metrics_data.append({
+                                'ticker': config.get('ticker', ticker),
+                                'model': config.get('model_type', model_name),
+                                'mae': config.get('mae'),
+                                'rmse': config.get('rmse'),
+                                'r2': config.get('r2', 0), # Default to 0 if not present
+                                'mape': config.get('mape', 0),
+                                'date_trained': config.get('date_trained')
+                            })
+                    except Exception as e:
+                        print(f"Error reading config for {ticker}/{model_name}: {e}")
+                        
+    return jsonify(metrics_data)
+
+
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
@@ -152,13 +226,65 @@ def predict():
         new_step[target_idx] = val
         current_seq[0, -1, :] = new_step
 
+    last_actual_date = df.index[-1].date()
+    
+    # Save to DB (Only the first prediction for simplicity, or all)
+    # Let's save the first day prediction as the "Forecast"
+    pred_date_obj = last_actual_date + timedelta(days=1)
+    save_prediction_to_db(ticker, model_name, predictions[0], str(pred_date_obj))
+
     return jsonify({
         "ticker": ticker,
         "model": model_name,
         "predictions": predictions,
         "last_close": float(df['Close'].iloc[-1]),
-        "last_date": str(df.index[-1].date())
+        "last_date": str(last_actual_date)
     })
+
+@app.route('/api/predictions')
+def get_predictions():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50')
+        rows = c.fetchall()
+        conn.close()
+        
+        results = []
+        for row in rows:
+            results.append({
+                'id': row['id'],
+                'ticker': row['ticker'],
+                'model': row['model'],
+                'price': row['predicted_price'],
+                'date': row['predicted_date'],
+                'created_at': row['created_at']
+            })
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/export_predictions')
+def export_predictions():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute('SELECT ticker, model, predicted_price, predicted_date, created_at FROM predictions ORDER BY created_at DESC')
+        rows = c.fetchall()
+        conn.close()
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Ticker', 'Model', 'Predicted Price', 'Target Date', 'Timestamp'])
+        writer.writerows(rows)
+        
+        return output.getvalue(), 200, {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename=prediction_history.csv'
+        }
+    except Exception as e:
+        return str(e), 500
 
 @app.route('/api/history', methods=['GET'])
 def history():

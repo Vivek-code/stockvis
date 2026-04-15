@@ -60,11 +60,13 @@
                 <h2 class="fw-bold mb-0" id="predictionValue">...</h2>
                 <small id="predictionDate" class="opacity-75">...</small>
             </div>
+
+
         </div>
 
         <!-- Main Chart Area -->
         <div class="col-lg-9">
-            <div class="card border-0 shadow-sm p-4 h-100">
+            <div class="card border-0 shadow-sm p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h5 class="fw-bold mb-0">Price History & Forecast</h5>
                     <div class="btn-group btn-group-sm">
@@ -77,6 +79,68 @@
                     <canvas id="mainChart"></canvas>
                 </div>
                 <div id="chartError" class="alert alert-danger d-none mt-3"></div>
+            </div>
+
+            <!-- Prediction History Table -->
+            <div class="card border-0 shadow-sm p-3 mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">Recent Forecasts</h6>
+                    <a href="/api/export_predictions" class="btn btn-outline-success btn-sm btn-sm-custom">
+                        <i class="fas fa-file-csv me-1"></i> Export
+                    </a>
+                </div>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover small">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Ticker</th>
+                                <th>Model</th>
+                                <th class="text-end">Pred. Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">Loading history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Model Leaderboard (Shared with Comparison Page) -->
+            <div class="card border-0 shadow-sm p-4 mt-4">
+                <h5 class="fw-bold mb-3">Model Accuracy Leaderboard</h5>
+                <p class="text-muted small">Compare R2 Scores and MAPE across all trained models.</p>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="leaderboardTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th onclick="sortTable(0)" style="cursor:pointer">Ticker <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                                <th onclick="sortTable(1)" style="cursor:pointer">Model <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                                <th onclick="sortTable(2)" style="cursor:pointer" class="text-end">R2 Score <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                                <th onclick="sortTable(3)" style="cursor:pointer" class="text-end">MAPE <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                                <th onclick="sortTable(4)" style="cursor:pointer" class="text-end">RMSE <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                                <th onclick="sortTable(5)" style="cursor:pointer" class="text-end">MAE <i
+                                        class="fas fa-sort small ms-1"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <!-- Populated by JS -->
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="spinner-border text-primary spinner-border-sm"></div> Loading metrics...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
