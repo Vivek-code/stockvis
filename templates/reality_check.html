@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-light pb-5" style="margin-top: 70px;">
+    <!-- Header -->
+    <div class="bg-white border-bottom py-4 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="fw-bold mb-1">Reality Check — Predicted vs Actual</h3>
+                <p class="text-muted mb-0">Evaluate 90-day real-world accuracy of AI models against historical market prices.</p>
+            </div>
+            <div>
+                <button class="btn btn-outline-success" onclick="exportCSV()">
+                    <i class="fas fa-file-csv me-2"></i>Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Stats Row -->
+        {% if summary %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                    <h6 class="text-muted small fw-bold">Mean Absolute Error (INR)</h6>
+                    <h3 class="fw-bold text-primary mb-0">₹{{ summary.mean_inr }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                    <h6 class="text-muted small fw-bold">Mean % Error</h6>
+                    <h3 class="fw-bold text-primary mb-0">{{ summary.mean_pct }}%</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                    <h6 class="text-muted small fw-bold">Best Prediction</h6>
+                    <div class="text-success fw-bold">{{ summary.best.ticker }} ({{ summary.best.model }})</div>
+                    <small class="text-muted">{{ summary.best.date }} — {{ summary.best.error_pct }}% err</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                    <h6 class="text-muted small fw-bold">Worst Prediction</h6>
+                    <div class="text-danger fw-bold">{{ summary.worst.ticker }} ({{ summary.worst.model }})</div>
+                    <small class="text-muted">{{ summary.worst.date }} — {{ summary.worst.error_pct }}% err</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Filter Bar & Chart -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-filter text-primary me-2"></i>Filters</h6>
+                    
+                    <label class="form-label text-muted small fw-bold">Select Ticker</label>
+                    <select class="form-select mb-3" id="filterTicker" onchange="applyFilters()">
+                        <!-- Populated by JS -->
+                    </select>
+
+                    <label class="form-label text-muted small fw-bold">Select Model</label>
+                    <select class="form-select mb-3" id="filterModel" onchange="applyFilters()">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm p-3 h-100" style="min-height: 250px;">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-chart-line text-primary me-2"></i>Actual vs Predicted Price (Last 30 Days)</h6>
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="errorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0" id="realityTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Date</th>
+                            <th>Ticker</th>
+                            <th>Model</th>
+                            <th class="text-end">Predicted (₹)</th>
+                            <th class="text-end">Actual (₹)</th>
+                            <th class="text-end">Error (₹)</th>
+                            <th class="text-end">Error (%)</th>
+                            <th class="text-center">Accuracy Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody id="realityTableBody">
+                        {% for r in results %}
+                        <tr data-ticker="{{ r.ticker }}" data-model="{{ r.model }}">
+                            <td>{{ r.date }}</td>
+                            <td class="fw-bold">{{ r.ticker }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ r.model }}</span></td>
+                            <td class="text-end">{{ r.predicted_price }}</td>
+                            
+                            {% if r.status == 'Complete' %}
+                                <td class="text-end">{{ r.actual_price }}</td>
+                                
+                                <td class="text-end {{ 'text-danger' if r.error_inr < 0 else 'text-success' }}">
+                                    {{ '+' if r.error_inr > 0 else '' }}{{ r.error_inr }}
+                                </td>
+                                
+                                <td class="text-end fw-bold">{{ r.error_pct }}%</td>
+                                
+                                <td class="text-center">
+                                    {% if r.rating == 'Excellent' %}
+                                        <span class="badge bg-success w-100">Excellent</span>
+                                    {% elif r.rating == 'Good' %}
+                                        <span class="badge bg-warning text-dark w-100" style="background-color: #ffc107!important;">Good</span>
+                                    {% elif r.rating == 'Fair' %}
+                                        <span class="badge w-100" style="background-color: #fd7e14;">Fair</span>
+                                    {% else %}
+                                        <span class="badge bg-danger w-100">Poor</span>
+                                    {% endif %}
+                                </td>
+                            {% else %}
+                                <td class="text-end text-muted">—</td>
+                                <td class="text-end text-muted">—</td>
+                                <td class="text-end text-muted">—</td>
+                                <td class="text-center"><span class="badge bg-secondary w-100">Pending</span></td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if not results %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-folder-open mb-3" style="font-size: 2rem;"></i>
+                    <p>No historical predictions found to compare!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const allResults = {{ results | tojson }};
+    let chartInstance = null;
+
+    function initFilters() {
+        const tickerSelect = document.getElementById('filterTicker');
+        const modelSelect = document.getElementById('filterModel');
+        tickerSelect.innerHTML = '';
+        modelSelect.innerHTML = '';
+
+        // Populate tickers
+        const tickers = [...new Set(allResults.map(r => r.ticker))];
+        tickers.forEach(t => tickerSelect.add(new Option(t, t)));
+
+        // Populate models
+        const models = [...new Set(allResults.map(r => r.model))];
+        models.forEach(m => modelSelect.add(new Option(m, m)));
+        
+        // Default to first ticker/model to make chart readable
+        if (tickers.includes('RELIANCE.NS')) {
+            tickerSelect.value = 'RELIANCE.NS';
+        } else if (tickers.length > 0) {
+            tickerSelect.value = tickers[0];
+        }
+        
+        if (models.includes('TRANSFORMER')) {
+            modelSelect.value = 'TRANSFORMER';
+        } else if (models.includes('LSTM')) {
+            modelSelect.value = 'LSTM';
+        }
+    }
+
+    function applyFilters() {
+        const selTicker = document.getElementById('filterTicker').value;
+        const selModel = document.getElementById('filterModel').value;
+
+        // Filter Rows
+        const rows = document.querySelectorAll('#realityTableBody tr');
+        let visibleResults = [];
+
+        rows.forEach(row => {
+            const rowTicker = row.getAttribute('data-ticker');
+            const rowModel = row.getAttribute('data-model');
+            
+            if (selTicker === rowTicker && selModel === rowModel) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Filter valid data for chart
+        const filteredData = allResults.filter(r => 
+            r.ticker === selTicker && 
+            r.model === selModel &&
+            r.status === 'Complete'
+        );
+
+        updateChart(filteredData);
+    }
+
+    function updateChart(data) {
+        // Sort chronologically
+        data.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Take last 30 days
+        const last30 = data.slice(-30);
+        
+        const labels = last30.map(r => r.date);
+        const actuals = last30.map(r => r.actual_price);
+        const predicteds = last30.map(r => r.predicted_price);
+
+        const ctx = document.getElementById('errorChart').getContext('2d');
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Actual Price',
+                        data: actuals,
+                        borderColor: '#20c997', // Greenish
+                        backgroundColor: 'rgba(32, 201, 151, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        fill: false
+                    },
+                    {
+                        label: 'Predicted Price',
+                        data: predicteds,
+                        borderColor: '#0d6efd', // Blue
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5], // Dashed line for predicted
+                        tension: 0.2,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Price (INR)' }
+                    },
+                    x: {
+                        title: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    function exportCSV() {
+        // Collect visible rows
+        const rows = Array.from(document.querySelectorAll('#realityTable tr')).filter(row => row.style.display !== 'none');
+        
+        let csvContent = "";
+        rows.forEach(row => {
+            let cols = row.querySelectorAll('th, td');
+            let rowData = Array.from(cols).map(c => {
+                let text = c.innerText.replace(/[\n\t]/g, "").trim();
+                return `"${text}"`;
+            });
+            csvContent += rowData.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "reality_check_export.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if(allResults && allResults.length > 0) {
+            initFilters();
+            applyFilters();
+        }
+    });
+
+</script>
+{% endblock %}

@@ -1,6 +1,7 @@
 import os
 import json
 import joblib
+import numpy as np
 from tensorflow.keras.models import load_model
 
 def load_model_package(model_name, ticker="RELIANCE.NS"):
@@ -48,6 +49,59 @@ def load_model_package(model_name, ticker="RELIANCE.NS"):
         'scaler': scaler,
         'config': config
     }
+
+# Cache for ensemble so we don't load repeatedly from disk
+_ensemble_cache = {}
+
+def ensemble_predict(ticker, X_input, scaler):
+    """
+    Computes a weighted ensemble prediction across available models.
+    Returns the final predicted price as a float.
+    """
+    weights = {'transformer': 0.35, 'gru': 0.25, 'lstm': 0.25, 'cnn': 0.15}
+    loaded_models = {}
+    feature_cols = None
+    target_name = None
+    
+    for m in weights.keys():
+        key = (ticker, m)
+        if key not in _ensemble_cache:
+            try:
+                pkg = load_model_package(m, ticker)
+                _ensemble_cache[key] = pkg
+            except Exception:
+                pass
+                
+        if key in _ensemble_cache:
+            loaded_models[m] = _ensemble_cache[key]
+            
+    if not loaded_models:
+        raise ValueError(f"No models available to build ensemble for {ticker}")
+        
+    # Get configuration from any loaded model to know the target index
+    first_pkg = list(loaded_models.values())[0]
+    feature_cols = first_pkg['config']['features']
+    target_name = first_pkg['config']['target']
+    target_idx = feature_cols.index(target_name)
+    
+    predictions = []
+    total_weight = 0
+    
+    for m_name, pkg in loaded_models.items():
+        w = weights[m_name]
+        m = pkg['model']
+        pred_scaled = m.predict(X_input, verbose=0)[0][0]
+        predictions.append(pred_scaled * w)
+        total_weight += w
+        
+    final_scaled = sum(predictions) / total_weight
+    
+    # Inverse transform
+    dummy = np.zeros((1, len(feature_cols)))
+    dummy[0, target_idx] = final_scaled
+    final_price = scaler.inverse_transform(dummy)[0, target_idx]
+    
+    return float(final_price)
 
 if __name__ == "__main__":
     # Test

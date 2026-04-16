@@ -8,11 +8,13 @@ import sqlite3
 import csv
 import io
 import threading
+import time
+import yfinance as yf
 
 # Project imports
 from data_loader import download_data
 from features import add_technical_indicators
-from load_model_pkg import load_model_package
+from load_model_pkg import load_model_package, ensemble_predict
 from sentiment_analyzer import get_sentiment_score
 
 app = Flask(__name__)
@@ -158,14 +160,20 @@ def predict():
     model_name = data.get('model', 'lstm').lower()
     days_to_predict = int(data.get('days', 1))
 
-    if model_name not in AVAILABLE_MODELS:
+    if model_name not in AVAILABLE_MODELS and model_name != 'ensemble':
         return jsonify({"error": f"Model type {model_name} not supported"}), 400
 
-    pkg = get_model(ticker, model_name)
-    if pkg is None:
-        return jsonify({"error": f"Model {model_name} for {ticker} not found (maybe not trained yet?)"}), 404
-
-    model = pkg['model']
+    if model_name == 'ensemble':
+        # Need config and scaler from one of the basic models to prepare data
+        pkg = get_model(ticker, 'lstm') or get_model(ticker, 'gru') or get_model(ticker, 'cnn') or get_model(ticker, 'transformer')
+        if pkg is None:
+            return jsonify({"error": f"No models found for {ticker} to build ensemble"}), 404
+        model = None
+    else:
+        pkg = get_model(ticker, model_name)
+        if pkg is None:
+            return jsonify({"error": f"Model {model_name} for {ticker} not found (maybe not trained yet?)"}), 404
+        model = pkg['model']
     scaler = pkg['scaler']
     config = pkg['config']
     lookback = config['lookback']
@@ -217,12 +225,17 @@ def predict():
     dummy = np.zeros((1, len(feature_cols)))
     
     for _ in range(days_to_predict):
-        pred_scaled = model.predict(current_seq, verbose=0)
-        
-        # Inverse Scale the Prediction
-        val = pred_scaled[0][0]
-        dummy[0, target_idx] = val
-        pred_price = scaler.inverse_transform(dummy)[0, target_idx]
+        if model_name == 'ensemble':
+            # ensemble_predict computes the weighted average and inverse transforms it directly
+            pred_price = ensemble_predict(ticker, current_seq, scaler)
+            dummy[0, target_idx] = pred_price
+            val = scaler.transform(dummy)[0, target_idx] # re-scale to inject back to sequence
+        else:
+            pred_scaled = model.predict(current_seq, verbose=0)
+            val = pred_scaled[0][0]
+            dummy[0, target_idx] = val
+            pred_price = scaler.inverse_transform(dummy)[0, target_idx]
+            
         predictions.append(float(pred_price))
         
         # Update Sequence for next prediction (Recursive)
@@ -244,7 +257,8 @@ def predict():
     # Save to DB (Only the first prediction for simplicity, or all)
     # Let's save the first day prediction as the "Forecast"
     pred_date_obj = last_actual_date + timedelta(days=1)
-    save_prediction_to_db(ticker, model_name, predictions[0], str(pred_date_obj))
+    db_model_name = "ENSEMBLE" if model_name == "ensemble" else model_name
+    save_prediction_to_db(ticker, db_model_name, predictions[0], str(pred_date_obj))
 
     return jsonify({
         "ticker": ticker,
@@ -384,6 +398,98 @@ def get_sentiment(ticker):
             "headlines": [],
             "error": str(e)
         })
+# --- Reality Check Feature ---
+YF_CACHE = {} # dict mapping (ticker, date_str) to price
+YF_CACHE_TIMESTAMP = 0
+
+def refresh_yf_cache_if_needed(tickers):
+    global YF_CACHE_TIMESTAMP
+    current_time = time.time()
+    if current_time - YF_CACHE_TIMESTAMP < 3600 and YF_CACHE:
+        return # Cache is fresh
+    
+    YF_CACHE.clear()
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=95)
+    
+    for ticker in tickers:
+        try:
+            df = yf.download(ticker, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'), progress=False)
+            if df.empty:
+                continue
+            for index, row in df.iterrows():
+                date_str = index.strftime('%Y-%m-%d')
+                val = row['Close']
+                price = float(val.iloc[0]) if hasattr(val, 'iloc') else float(val)
+                YF_CACHE[(ticker, date_str)] = price
+        except Exception as e:
+            print(f"Error caching {ticker}: {e}")
+            
+    YF_CACHE_TIMESTAMP = current_time
+
+@app.route('/reality-check')
+def reality_check():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    ninety_days_ago = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+    c.execute('''
+        SELECT ticker, model, predicted_price, predicted_date 
+        FROM predictions 
+        WHERE predicted_date >= ?
+        ORDER BY predicted_date DESC
+    ''', (ninety_days_ago,))
+    
+    rows = c.fetchall()
+    conn.close()
+    
+    unique_tickers = list(set([r[0] for r in rows]))
+    refresh_yf_cache_if_needed(unique_tickers)
+    
+    processed_results = []
+    
+    for ticker, model, pred_price, pred_date_str in rows:
+        cache_key = (ticker, pred_date_str)
+        if cache_key in YF_CACHE:
+            actual_price = YF_CACHE[cache_key]
+            error_inr = pred_price - actual_price
+            error_pct = abs(error_inr) / actual_price * 100
+            
+            if error_pct < 2: rating = 'Excellent'
+            elif error_pct < 5: rating = 'Good'
+            elif error_pct < 10: rating = 'Fair'
+            else: rating = 'Poor'
+            status = 'Complete'
+        else:
+            actual_price = None
+            error_inr = None
+            error_pct = None
+            rating = 'Pending'
+            status = 'Pending'
+            
+        processed_results.append({
+            'date': pred_date_str,
+            'ticker': ticker,
+            'model': model.upper(),
+            'predicted_price': round(pred_price, 2),
+            'actual_price': round(actual_price, 2) if actual_price else None,
+            'error_inr': round(error_inr, 2) if error_inr else None,
+            'error_pct': round(error_pct, 2) if error_pct else None,
+            'rating': rating,
+            'status': status
+        })
+        
+    valid_results = [r for r in processed_results if r['status'] == 'Complete']
+    if valid_results:
+        summary = {
+            'mean_inr': round(sum([abs(r['error_inr']) for r in valid_results]) / len(valid_results), 2),
+            'mean_pct': round(sum([r['error_pct'] for r in valid_results]) / len(valid_results), 2),
+            'best': min(valid_results, key=lambda x: x['error_pct']),
+            'worst': max(valid_results, key=lambda x: x['error_pct'])
+        }
+    else:
+        summary = None
+        
+    return render_template('reality_check.html', results=processed_results, summary=summary)
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False) # use_reloader=False to avoid loading models twice
