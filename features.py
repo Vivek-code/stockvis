@@ -65,6 +65,9 @@ def add_technical_indicators(df):
     df['SMA_10'] = ta.sma(df['Close'], length=10)
     df['SMA_20'] = ta.sma(df['Close'], length=20)
 
+    # 7. Sentiment placeholder (0.0 for historical data, overridden at prediction time)
+    df['sentiment'] = 0.0
+
     # Drop NaNs created by indicators (e.g. first 26 rows for MACD)
     df.dropna(inplace=True)
 

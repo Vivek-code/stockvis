@@ -3,6 +3,7 @@ from tensorflow.keras.layers import (
     Dense, LSTM, GRU, Conv1D, MaxPooling1D, Flatten, Dropout, Input,
     MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
 )
+from tensorflow.keras.optimizers import Adam
 
 def create_lstm_model(input_shape):
     """
@@ -93,5 +94,5 @@ def create_transformer_model(input_shape):
     outputs = Dense(1)(x)
 
     model = Model(inputs=inputs, outputs=outputs)
-    model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    model.compile(optimizer=Adam(learning_rate=1e-4), loss='mse', metrics=['mae'])
     return model

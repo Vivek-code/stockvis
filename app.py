@@ -13,6 +13,7 @@ import threading
 from data_loader import download_data
 from features import add_technical_indicators
 from load_model_pkg import load_model_package
+from sentiment_analyzer import get_sentiment_score
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev_key_for_project_123'
@@ -182,6 +183,18 @@ def predict():
 
     # 2. Tech Indicators
     df = add_technical_indicators(df)
+
+    # 2b. Inject live sentiment if model expects it
+    if 'sentiment' in feature_cols:
+        try:
+            sentiment_score, _ = get_sentiment_score(ticker)
+            df['sentiment'] = 0.0  # Default for all rows
+            df.iloc[-1, df.columns.get_loc('sentiment')] = sentiment_score
+            print(f"Injected live sentiment: {sentiment_score:.4f}")
+        except Exception as e:
+            print(f"Sentiment injection failed: {e}")
+            if 'sentiment' not in df.columns:
+                df['sentiment'] = 0.0
     
     # 3. Prepare Input
     # We need the last 'lookback' rows
@@ -339,6 +352,38 @@ def history():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/sentiment/<ticker>')
+def get_sentiment(ticker):
+    """
+    Returns sentiment analysis for a given ticker.
+    """
+    try:
+        score, headlines = get_sentiment_score(ticker)
+        headlines_count = len(headlines)
+        
+        if score > 0.1:
+            label = "Positive"
+        elif score < -0.1:
+            label = "Negative"
+        else:
+            label = "Neutral"
+
+        return jsonify({
+            "ticker": ticker,
+            "score": round(score, 4),
+            "label": label,
+            "headlines_analyzed": headlines_count,
+            "headlines": headlines
+        })
+    except Exception as e:
+        return jsonify({
+            "ticker": ticker,
+            "score": 0.0,
+            "label": "Neutral",
+            "headlines_analyzed": 0,
+            "headlines": [],
+            "error": str(e)
+        })
+
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False) # use_reloader=False to avoid loading models twice
-

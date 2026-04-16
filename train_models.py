@@ -8,7 +8,7 @@ from data_loader import download_data
 from features import add_technical_indicators
 from model_utils import prepare_data_for_training, save_scaler
 from model_definitions import create_lstm_model, create_gru_model, create_cnn_model, create_transformer_model
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 # Configuration
 START_DATE = "2020-01-01"
@@ -89,17 +89,32 @@ def train_and_save_models():
                 print(f"\nTraining {name.upper()} model for {ticker}...")
                 model = model_fn(input_shape)
                 
-                # Callbacks
-                early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-                
-                history = model.fit(
-                    X_train, y_train,
-                    validation_data=(X_test, y_test),
-                    epochs=EPOCHS,
-                    batch_size=BATCH_SIZE,
-                    callbacks=[early_stopping],
-                    verbose=1
-                )
+                # Transformer-specific training config
+                if name == 'transformer':
+                    t_epochs = 150
+                    t_batch = 16
+                    t_early = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
+                    t_reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6)
+                    history = model.fit(
+                        X_train, y_train,
+                        validation_data=(X_test, y_test),
+                        validation_split=0.1 if X_test is None else 0,
+                        epochs=t_epochs,
+                        batch_size=t_batch,
+                        callbacks=[t_early, t_reduce_lr],
+                        verbose=1
+                    )
+                else:
+                    # Default config for lstm/gru/cnn
+                    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+                    history = model.fit(
+                        X_train, y_train,
+                        validation_data=(X_test, y_test),
+                        epochs=EPOCHS,
+                        batch_size=BATCH_SIZE,
+                        callbacks=[early_stopping],
+                        verbose=1
+                    )
                 
                 # 5. Evaluation
                 loss = model.evaluate(X_test, y_test, verbose=0)

@@ -55,6 +55,24 @@
                 </div>
             </div>
 
+            <!-- Sentiment Card -->
+            <div class="card border-0 shadow-sm p-3 mt-3" id="sentimentCard">
+                <div class="d-flex align-items-center mb-2">
+                    <span id="sentimentDot" style="width:12px;height:12px;border-radius:50%;background:#adb5bd;display:inline-block;margin-right:8px;"></span>
+                    <h6 class="fw-bold mb-0" style="font-size: 0.85rem;">Market Sentiment</h6>
+                </div>
+                <div id="sentimentContent">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small" id="sentimentLabel">Loading...</span>
+                        <span class="fw-bold" id="sentimentScore" style="font-size: 0.9rem;">—</span>
+                    </div>
+                    <small class="text-muted" id="sentimentHeadlines">0 headlines analyzed</small>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm mt-2 w-100" onclick="refreshSentiment()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh Sentiment
+                </button>
+            </div>
+
             <!-- Result Card (Hidden initially) -->
             <div class="card border-0 shadow-sm p-3 mt-3 bg-primary text-white d-none" id="predictionResultCard">
                 <h6 class="mb-1 opacity-75">Predicted Close</h6>
@@ -109,6 +127,14 @@
                 </div>
             </div>
 
+            <!-- Market Headlines List -->
+            <div class="card border-0 shadow-sm p-4 mt-4" id="headlinesCard" style="display: none;">
+                <h6 class="fw-bold mb-3"><i class="fas fa-newspaper me-2 text-primary"></i>Recent Market Headlines (Sentiment Source)</h6>
+                <ul id="sentimentHeadlinesList" class="list-unstyled mb-0" style="font-size: 0.85rem; padding-left: 0.5rem; border-left: 3px solid #dee2e6;">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+
             <!-- Model Leaderboard (Shared with Comparison Page) -->
             <div class="card border-0 shadow-sm p-4 mt-4">
                 <h5 class="fw-bold mb-3">Model Accuracy Leaderboard</h5>
@@ -146,6 +172,72 @@
         </div>
     </div>
 </div>
+
+<!-- Sentiment JS -->
+<script>
+    function refreshSentiment() {
+        const ticker = document.getElementById('tickerSelect').value;
+        fetchSentiment(ticker);
+    }
+
+    async function fetchSentiment(ticker) {
+        const dot = document.getElementById('sentimentDot');
+        const label = document.getElementById('sentimentLabel');
+        const score = document.getElementById('sentimentScore');
+        const headlinesInfo = document.getElementById('sentimentHeadlines');
+        const headlinesList = document.getElementById('sentimentHeadlinesList');
+
+        label.textContent = 'Analyzing...';
+        score.textContent = '—';
+        document.getElementById('headlinesCard').style.display = 'none';
+        headlinesList.innerHTML = '';
+        dot.style.background = '#adb5bd';
+
+        try {
+            const response = await fetch(`/api/sentiment/${ticker}`);
+            const data = await response.json();
+
+            // Update dot color
+            if (data.label === 'Positive') {
+                dot.style.background = '#198754';
+            } else if (data.label === 'Negative') {
+                dot.style.background = '#dc3545';
+            } else {
+                dot.style.background = '#adb5bd';
+            }
+
+            label.textContent = data.label;
+            const prefix = data.score >= 0 ? '+' : '';
+            score.textContent = `${prefix}${data.score.toFixed(4)}`;
+            score.style.color = data.score > 0.1 ? '#198754' : (data.score < -0.1 ? '#dc3545' : '#6c757d');
+            headlinesInfo.textContent = `${data.headlines_analyzed} headlines analyzed`;
+
+            if (data.headlines && data.headlines.length > 0) {
+                document.getElementById('headlinesCard').style.display = 'block';
+                data.headlines.forEach(hl => {
+                    const li = document.createElement('li');
+                    li.className = 'mb-2 text-truncate text-muted';
+                    li.title = hl;
+                    li.innerHTML = `• ${hl}`;
+                    headlinesList.appendChild(li);
+                });
+            }
+        } catch (err) {
+            label.textContent = 'Unavailable';
+            score.textContent = '—';
+            headlinesInfo.textContent = 'Error fetching sentiment';
+            console.error('Sentiment error:', err);
+        }
+    }
+
+    // Auto-load sentiment on page load and ticker change
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchSentiment(document.getElementById('tickerSelect').value);
+        document.getElementById('tickerSelect').addEventListener('change', (e) => {
+            fetchSentiment(e.target.value);
+        });
+    });
+</script>
 
 <!-- Custom JS for Dashboard -->
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
