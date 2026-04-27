@@ -1,0 +1,9 @@
+[
+  {"System": "CTMS", "File": "Patient_Master.csv", "Format": "CSV"},
+  {"System": "CTMS", "File": "Clinical_Events.csv", "Format": "CSV"},
+  {"System": "CTMS", "File": "Site_Master.json", "Format": "JSON"},
+  {"System": "CTMS", "File": "Investigator_Master.json", "Format": "JSON"},
+  {"System": "Veeva", "File": "Product_Master.csv", "Format": "CSV"},
+  {"System": "Argus", "File": "Adverse_Events.json", "Format": "JSON"},
+  {"System": "LIMS", "File": "Batch_Quality.json", "Format": "JSON"}
+]
